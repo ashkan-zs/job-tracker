@@ -4,12 +4,22 @@ import express, {
   type Response,
 } from "express";
 
+import { z } from "zod";
+
+// Zod schema
+const createApplicationSchema = z.object({
+  company: z.string().trim().min(1),
+  position: z.string().trim().min(1),
+  status: z.enum(["applied", "interview", "rejected", "offer"]),
+});
+
+const updateApplicationSchema = createApplicationSchema.partial();
+
 // Types
-type Application = {
+type CreateApplication = z.infer<typeof createApplicationSchema>;
+
+type Application = CreateApplication & {
   id: number;
-  company: string;
-  position: string;
-  status: "applied" | "interview" | "rejected" | "offer";
 };
 
 // Data
@@ -88,8 +98,16 @@ app.get("/applications/:id", validateApplicationId, (req, res) => {
 });
 
 app.post("/applications", (req, res) => {
-  const newApplication = req.body;
-  const application = { ...newApplication, id: getNextId(applications) };
+  const requestData = createApplicationSchema.safeParse(req.body);
+
+  if (!requestData.success) {
+    return res.status(400).json({
+      message: "Invalid job application data",
+      error: requestData.error.issues,
+    });
+  }
+
+  const application = { ...requestData.data, id: getNextId(applications) };
 
   applications.push(application);
 
@@ -114,21 +132,32 @@ app.delete("/applications/:id", validateApplicationId, (req, res) => {
 
 app.patch("/applications/:id", validateApplicationId, (req, res) => {
   const applicationId = Number(req.params.id);
-  const content = req.body;
+  const requestData = updateApplicationSchema.safeParse(req.body);
 
+  if (!requestData.success) {
+    return res.status(400).json({
+      message: "Invalid job application data",
+      error: requestData.error.issues,
+    });
+  }
   const applicationIndex = applications.findIndex(
     (application) => application.id === applicationId,
   );
 
-  if (applicationIndex === -1) {
+  const existingApplication = applications[applicationIndex];
+
+  if (!existingApplication) {
     return res.status(404).json({ message: "Job application not found!" });
   }
 
-  applications[applicationIndex] = {
-    ...applications[applicationIndex],
-    ...content,
+  const updatedApplication: Application = {
     id: applicationId,
+    company: requestData.data.company ?? existingApplication.company,
+    position: requestData.data.position ?? existingApplication.position,
+    status: requestData.data.status ?? existingApplication.status,
   };
+
+  applications[applicationIndex] = updatedApplication;
 
   res.json(applications[applicationIndex]);
 });
