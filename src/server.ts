@@ -13,7 +13,11 @@ const createApplicationSchema = z.object({
   status: z.enum(["applied", "interview", "rejected", "offer"]),
 });
 
-const updateApplicationSchema = createApplicationSchema.partial();
+const updateApplicationSchema = createApplicationSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field is required",
+  });
 
 // Types
 type CreateApplication = z.infer<typeof createApplicationSchema>;
@@ -103,7 +107,7 @@ app.post("/applications", (req, res) => {
   if (!requestData.success) {
     return res.status(400).json({
       message: "Invalid job application data",
-      error: requestData.error.issues,
+      errors: requestData.error.issues,
     });
   }
 
@@ -137,7 +141,7 @@ app.patch("/applications/:id", validateApplicationId, (req, res) => {
   if (!requestData.success) {
     return res.status(400).json({
       message: "Invalid job application data",
-      error: requestData.error.issues,
+      errors: requestData.error.issues,
     });
   }
   const applicationIndex = applications.findIndex(
