@@ -4,27 +4,11 @@ import express, {
   type Response,
 } from "express";
 
-import { z } from "zod";
-
-// Zod schema
-const createApplicationSchema = z.object({
-  company: z.string().trim().min(1),
-  position: z.string().trim().min(1),
-  status: z.enum(["applied", "interview", "rejected", "offer"]),
-});
-
-const updateApplicationSchema = createApplicationSchema
-  .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one field is required",
-  });
-
-// Types
-type CreateApplication = z.infer<typeof createApplicationSchema>;
-
-type Application = CreateApplication & {
-  id: number;
-};
+import {
+  createApplicationSchema,
+  updateApplicationSchema,
+  type Application,
+} from "./schemas/application.schema.js";
 
 // Data
 const applications: Application[] = [
