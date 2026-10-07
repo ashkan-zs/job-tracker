@@ -69,6 +69,26 @@ app.post("/applications", (req, res) => {
   res.status(201).json(application);
 });
 
+app.delete("/applications/:id", (req, res) => {
+  const applicationId = +req.params.id;
+
+  if (Number.isNaN(applicationId)) {
+    return res.status(400).json({ message: "Invalid job application ID" });
+  }
+
+  const applicationIndex = applications.findIndex(
+    (application) => application.id === applicationId,
+  );
+
+  if (applicationIndex === -1) {
+    return res.status(404).json({ message: "Job application not found!" });
+  }
+
+  applications.splice(applicationIndex, 1);
+
+  res.status(204).json({ message: "Job application has been deleted" });
+});
+
 app.listen(port, () => {
   console.log(`Job tracker API listening on ${port}`);
 });
