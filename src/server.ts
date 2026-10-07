@@ -1,5 +1,10 @@
-import express from "express";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 
+// Types
 type Application = {
   id: number;
   company: string;
@@ -7,6 +12,7 @@ type Application = {
   status: "applied" | "interview" | "rejected" | "offer";
 };
 
+// Data
 const applications: Application[] = [
   {
     id: 1,
@@ -28,11 +34,36 @@ const applications: Application[] = [
   },
 ];
 
+// Helper functions
+const getNextId = (applications: Application[]) => {
+  const maxId = applications.reduce(
+    (max, application) => Math.max(max, application.id),
+    0,
+  );
+
+  return maxId + 1;
+};
+
+// Middleware
+const validateApplicationId = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const applicationId = Number(req.params.id);
+
+  if (!Number.isInteger(applicationId) || applicationId < 1) {
+    return res.status(400).json({ message: "Invalid job application ID" });
+  }
+
+  next();
+};
+
+// Express setup
 const app = express();
+const port = 3000;
 
 app.use(express.json());
-
-const port = 3000;
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -42,12 +73,8 @@ app.get("/applications", (req, res) => {
   res.json(applications);
 });
 
-app.get("/applications/:id", (req, res) => {
-  const applicationId = +req.params.id;
-
-  if (Number.isNaN(applicationId)) {
-    return res.status(400).json({ message: "Invalid job application ID" });
-  }
+app.get("/applications/:id", validateApplicationId, (req, res) => {
+  const applicationId = Number(req.params.id);
 
   const application = applications.find(
     (application) => application.id === applicationId,
@@ -60,15 +87,6 @@ app.get("/applications/:id", (req, res) => {
   res.json(application);
 });
 
-const getNextId = (applications: Application[]) => {
-  const maxId = applications.reduce(
-    (max, application) => Math.max(max, application.id),
-    0,
-  );
-
-  return maxId + 1;
-};
-
 app.post("/applications", (req, res) => {
   const newApplication = req.body;
   const application = { ...newApplication, id: getNextId(applications) };
@@ -78,12 +96,8 @@ app.post("/applications", (req, res) => {
   res.status(201).json(application);
 });
 
-app.delete("/applications/:id", (req, res) => {
-  const applicationId = +req.params.id;
-
-  if (Number.isNaN(applicationId)) {
-    return res.status(400).json({ message: "Invalid job application ID" });
-  }
+app.delete("/applications/:id", validateApplicationId, (req, res) => {
+  const applicationId = Number(req.params.id);
 
   const applicationIndex = applications.findIndex(
     (application) => application.id === applicationId,
@@ -96,6 +110,27 @@ app.delete("/applications/:id", (req, res) => {
   applications.splice(applicationIndex, 1);
 
   res.status(204).send();
+});
+
+app.patch("/applications/:id", validateApplicationId, (req, res) => {
+  const applicationId = Number(req.params.id);
+  const content = req.body;
+
+  const applicationIndex = applications.findIndex(
+    (application) => application.id === applicationId,
+  );
+
+  if (applicationIndex === -1) {
+    return res.status(404).json({ message: "Job application not found!" });
+  }
+
+  applications[applicationIndex] = {
+    ...applications[applicationIndex],
+    ...content,
+    id: applicationId,
+  };
+
+  res.json(applications[applicationIndex]);
 });
 
 app.listen(port, () => {
