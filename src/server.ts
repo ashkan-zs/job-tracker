@@ -29,6 +29,9 @@ const applications: Application[] = [
 ];
 
 const app = express();
+
+app.use(express.json());
+
 const port = 3000;
 
 app.get("/health", (req, res) => {
@@ -43,7 +46,7 @@ app.get("/applications/:id", (req, res) => {
   const applicationId = +req.params.id;
 
   if (Number.isNaN(applicationId)) {
-    return res.status(400).json({ message: "Invalid application ID" });
+    return res.status(400).json({ message: "Invalid job application ID" });
   }
 
   const application = applications.find(
@@ -51,10 +54,19 @@ app.get("/applications/:id", (req, res) => {
   );
 
   if (!application) {
-    return res.status(404).json({ message: "Application not found!" });
+    return res.status(404).json({ message: "Job Application not found!" });
   }
 
   res.json(application);
+});
+
+app.post("/applications", (req, res) => {
+  const newApplication = req.body;
+  const application = { ...newApplication, id: applications.length + 1 };
+
+  applications.push(application);
+
+  res.status(201).json(application);
 });
 
 app.listen(port, () => {
