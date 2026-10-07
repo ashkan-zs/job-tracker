@@ -39,6 +39,24 @@ app.get("/applications", (req, res) => {
   res.json(applications);
 });
 
+app.get("/applications/:id", (req, res) => {
+  const applicationId = +req.params.id;
+
+  if (Number.isNaN(applicationId)) {
+    return res.status(400).json({ message: "Invalid application ID" });
+  }
+
+  const application = applications.find(
+    (application) => application.id === applicationId,
+  );
+
+  if (!application) {
+    return res.status(404).json({ message: "Application not found!" });
+  }
+
+  res.json(application);
+});
+
 app.listen(port, () => {
   console.log(`Job tracker API listening on ${port}`);
 });
