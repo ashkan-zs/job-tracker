@@ -60,9 +60,18 @@ app.get("/applications/:id", (req, res) => {
   res.json(application);
 });
 
+const getNextId = (applications: Application[]) => {
+  const maxId = applications.reduce(
+    (max, application) => Math.max(max, application.id),
+    0,
+  );
+
+  return maxId + 1;
+};
+
 app.post("/applications", (req, res) => {
   const newApplication = req.body;
-  const application = { ...newApplication, id: applications.length + 1 };
+  const application = { ...newApplication, id: getNextId(applications) };
 
   applications.push(application);
 
@@ -86,7 +95,7 @@ app.delete("/applications/:id", (req, res) => {
 
   applications.splice(applicationIndex, 1);
 
-  res.status(204).json({ message: "Job application has been deleted" });
+  res.status(204).send();
 });
 
 app.listen(port, () => {
