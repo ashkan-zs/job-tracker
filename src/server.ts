@@ -1,14 +1,12 @@
-import express, {
-  type NextFunction,
-  type Request,
-  type Response,
-} from "express";
+import express from "express";
 
 import {
   createApplicationSchema,
   updateApplicationSchema,
   type Application,
 } from "./schemas/application.schema.js";
+
+import { validateApplicationId } from "./middleware/validate-application-id.js";
 
 // Data
 const applications: Application[] = [
@@ -42,21 +40,6 @@ const getNextId = (applications: Application[]) => {
   return maxId + 1;
 };
 
-// Middleware
-const validateApplicationId = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const applicationId = Number(req.params.id);
-
-  if (!Number.isInteger(applicationId) || applicationId < 1) {
-    return res.status(400).json({ message: "Invalid job application ID" });
-  }
-
-  next();
-};
-
 // Express setup
 const app = express();
 const port = 3000;
@@ -72,7 +55,7 @@ app.get("/applications", (req, res) => {
 });
 
 app.get("/applications/:id", validateApplicationId, (req, res) => {
-  const applicationId = Number(req.params.id);
+  const applicationId = res.locals.applicationId;
 
   const application = applications.find(
     (application) => application.id === applicationId,
@@ -103,7 +86,7 @@ app.post("/applications", (req, res) => {
 });
 
 app.delete("/applications/:id", validateApplicationId, (req, res) => {
-  const applicationId = Number(req.params.id);
+  const applicationId = res.locals.applicationId;
 
   const applicationIndex = applications.findIndex(
     (application) => application.id === applicationId,
@@ -119,7 +102,7 @@ app.delete("/applications/:id", validateApplicationId, (req, res) => {
 });
 
 app.patch("/applications/:id", validateApplicationId, (req, res) => {
-  const applicationId = Number(req.params.id);
+  const applicationId = res.locals.applicationId;
   const requestData = updateApplicationSchema.safeParse(req.body);
 
   if (!requestData.success) {
