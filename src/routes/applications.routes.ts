@@ -63,7 +63,7 @@ router.get("/:id", validateApplicationId, (req, res) => {
   const application = getApplicationById(applicationId);
 
   if (!application) {
-    return res.status(404).json({ message: "Job Application not found!" });
+    return res.status(404).json({ message: "Job application not found!" });
   }
 
   res.json(application);
