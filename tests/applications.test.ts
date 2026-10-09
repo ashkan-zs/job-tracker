@@ -43,3 +43,45 @@ describe("GET /applications/:id", () => {
     });
   });
 });
+
+describe("POST /applications", () => {
+  test("should create an application with valid data", async () => {
+    const newApplication = {
+      company: "Google",
+      position: "Frontend Developer",
+      status: "applied",
+    };
+
+    const response = await request(app)
+      .post("/applications")
+      .send(newApplication);
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject(newApplication);
+    expect(response.body.id).toEqual(expect.any(Number));
+  });
+
+  test.each([
+    {
+      name: "company is invalid",
+      body: {
+        position: "frontend",
+        status: "applied",
+      },
+    },
+    {
+      name: "status is invalid",
+      body: {
+        company: "ab-hayat",
+        position: "frontend",
+        status: "pending",
+      },
+    },
+  ])("should return 400 when $name", async ({ body }) => {
+    const response = await request(app).post("/applications").send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty("message");
+    expect(response.body.errors.length).toBeGreaterThan(0);
+  });
+});
