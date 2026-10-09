@@ -24,6 +24,6 @@ const initialApplications: Application[] = [
 export const applications: Application[] = [...initialApplications];
 
 export const resetApplications = () => {
-  applications.slice(0);
+  applications.splice(0);
   applications.push(...initialApplications);
 };
