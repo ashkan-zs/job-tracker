@@ -1,6 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import request from "supertest";
 import app from "../src/app.js";
+import { resetApplications } from "../src/data/applications.store.js";
+
+beforeEach(() => {
+  resetApplications();
+});
 
 describe("GET /applications", () => {
   test("should return an array of applications", async () => {
@@ -59,6 +64,11 @@ describe("POST /applications", () => {
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject(newApplication);
     expect(response.body.id).toEqual(expect.any(Number));
+
+    const listResponse = await request(app).get("/applications");
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body).toHaveLength(4);
   });
 
   test.each([
