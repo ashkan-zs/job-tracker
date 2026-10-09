@@ -95,3 +95,59 @@ describe("POST /applications", () => {
     expect(response.body.errors.length).toBeGreaterThan(0);
   });
 });
+
+describe("PATCH /applications/:id", () => {
+  test("should update an existing application", async () => {
+    const body = {
+      status: "interview",
+    };
+
+    const response = await request(app).patch("/applications/2").send(body);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      id: 2,
+      company: "strong",
+      position: "frontend",
+      status: "interview",
+    });
+
+    const updatedItem = await request(app).get("/applications/2");
+    expect(response.body).toMatchObject(updatedItem.body);
+  });
+
+  test("should return 400 when ID is invalid", async () => {
+    const body = {
+      status: "interview",
+    };
+
+    const response = await request(app).patch("/applications/abc").send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty("message");
+  });
+
+  test.each([
+    { name: "is invalid", body: { status: "pending" } },
+    { name: "is empty", body: {} },
+  ])("should return 400 when body $name", async ({ body }) => {
+    const response = await request(app).patch("/applications/2").send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty(
+      "message",
+      "Invalid job application data",
+    );
+    expect(response.body.errors.length).greaterThan(0);
+  });
+
+  test("should return 404 when ID does not exist", async () => {
+    const body = {
+      status: "interview",
+    };
+
+    const response = await request(app).patch("/applications/99").send(body);
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty("message");
+  });
+});
