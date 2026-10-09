@@ -115,6 +115,16 @@ describe("PATCH /applications/:id", () => {
     expect(response.body).toMatchObject(updatedItem.body);
   });
 
+  test("should preserve status when updating only company", async () => {
+    const response = await request(app)
+      .patch("/applications/2")
+      .send({ company: "Microsoft" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("applied");
+    expect(response.body.company).toBe("Microsoft");
+  });
+
   test("should return 400 when ID is invalid", async () => {
     const body = {
       status: "interview",
