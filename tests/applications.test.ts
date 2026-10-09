@@ -137,7 +137,7 @@ describe("PATCH /applications/:id", () => {
       "message",
       "Invalid job application data",
     );
-    expect(response.body.errors.length).greaterThan(0);
+    expect(response.body.errors.length).toBeGreaterThan(0);
   });
 
   test("should return 404 when ID does not exist", async () => {
@@ -148,6 +148,31 @@ describe("PATCH /applications/:id", () => {
     const response = await request(app).patch("/applications/99").send(body);
 
     expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty("message");
+  });
+});
+
+describe("DELETE /applications/:id", () => {
+  test("should delete an application", async () => {
+    const response = await request(app).delete("/applications/2");
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+
+    const getDeletedItem = await request(app).get("/applications/2");
+
+    expect(getDeletedItem.status).toBe(404);
+  });
+  test("should return 404 when ID does not exist", async () => {
+    const response = await request(app).delete("/applications/99");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty("message");
+  });
+  test("should return 400 when ID is invalid", async () => {
+    const response = await request(app).delete("/applications/abc");
+
+    expect(response.status).toBe(400);
     expect(response.body).toHaveProperty("message");
   });
 });
