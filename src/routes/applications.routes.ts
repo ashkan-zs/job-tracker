@@ -5,29 +5,8 @@ import {
   updateApplicationSchema,
   type Application,
 } from "../schemas/application.schema.js";
-import { validateApplicationId } from "../middleware/validate-application-id.js";
-
-// Data
-const applications: Application[] = [
-  {
-    id: 1,
-    company: "flex",
-    position: "frontend",
-    status: "applied",
-  },
-  {
-    id: 2,
-    company: "strong",
-    position: "frontend",
-    status: "applied",
-  },
-  {
-    id: 3,
-    company: "blue",
-    position: "frontend",
-    status: "applied",
-  },
-];
+import { validateApplicationId } from "../middleware/validate-application-id.middleware.js";
+import { applications } from "../data/applications.store.js";
 
 // Helper functions
 const getNextId = (applications: Application[]) => {
