@@ -1,33 +1,53 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterAll, beforeEach, describe, expect, test } from "vitest";
 import request from "supertest";
 import app from "../src/app.js";
-import { resetApplications } from "../src/data/applications.store.js";
+import {
+  closeDatabase,
+  resetDatabase,
+  seedApplication,
+} from "./helper/database.js";
 
-beforeEach(() => {
-  resetApplications();
+beforeEach(async () => {
+  await resetDatabase();
+});
+
+afterAll(async () => {
+  await closeDatabase();
 });
 
 describe("GET /applications", () => {
-  test("should return an array of applications", async () => {
+  test("return an empty array when no applications exist", async () => {
+    await seedApplication({
+      company: "flex",
+      position: "frontend",
+      status: "applied",
+    });
+
+    await seedApplication({
+      company: "google",
+      position: "backend",
+      status: "interview",
+    });
+
     const response = await request(app).get("/applications");
 
     expect(response.status).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true);
-    expect(response.body.length).toBeGreaterThan(0);
+    expect(response.body).toHaveLength(2);
   });
 });
 
 describe("GET /applications/:id", () => {
   test("should return an application when ID exists", async () => {
-    const response = await request(app).get("/applications/1");
+    const id = await seedApplication({
+      company: "Google",
+      position: "Backend Developer",
+      status: "interview",
+    });
+
+    const response = await request(app).get(`/applications/${id}`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({
-      id: 1,
-      company: "flex",
-      position: "frontend",
-      status: "applied",
-    });
+    expect(response.body.company).toBe("Google");
   });
 
   test("should return 404 when application does not exist", async () => {
@@ -52,7 +72,7 @@ describe("GET /applications/:id", () => {
 describe("POST /applications", () => {
   test("should create an application with valid data", async () => {
     const newApplication = {
-      company: "Google",
+      company: "Vodafon",
       position: "Frontend Developer",
       status: "applied",
     };
@@ -68,7 +88,11 @@ describe("POST /applications", () => {
     const listResponse = await request(app).get("/applications");
 
     expect(listResponse.status).toBe(200);
-    expect(listResponse.body).toHaveLength(4);
+    expect(listResponse.body).toHaveLength(1);
+    expect(listResponse.body[0]).toMatchObject({
+      id: response.body.id,
+      ...newApplication,
+    });
   });
 
   test.each([
@@ -98,26 +122,38 @@ describe("POST /applications", () => {
 
 describe("PATCH /applications/:id", () => {
   test("should update an existing application", async () => {
+    const id = await seedApplication({
+      company: "flex",
+      position: "frontend",
+      status: "applied",
+    });
+
     const body = {
       status: "interview",
     };
 
-    const response = await request(app).patch("/applications/2").send(body);
+    const response = await request(app).patch(`/applications/${id}`).send(body);
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      id: 2,
-      company: "strong",
+      id: id,
+      company: "flex",
       position: "frontend",
       status: "interview",
     });
 
-    const updatedItem = await request(app).get("/applications/2");
-    expect(response.body).toMatchObject(updatedItem.body);
+    const updatedItem = await request(app).get(`/applications/${id}`);
+    expect(updatedItem.body).toEqual(response.body);
   });
 
   test("should preserve status when updating only company", async () => {
+    const id = await seedApplication({
+      company: "flex",
+      position: "frontend",
+      status: "applied",
+    });
+
     const response = await request(app)
-      .patch("/applications/2")
+      .patch(`/applications/${id}`)
       .send({ company: "Microsoft" });
 
     expect(response.status).toBe(200);
@@ -164,12 +200,18 @@ describe("PATCH /applications/:id", () => {
 
 describe("DELETE /applications/:id", () => {
   test("should delete an application", async () => {
-    const response = await request(app).delete("/applications/2");
+    const id = await seedApplication({
+      company: "flex",
+      position: "frontend",
+      status: "applied",
+    });
+
+    const response = await request(app).delete(`/applications/${id}`);
 
     expect(response.status).toBe(204);
     expect(response.body).toEqual({});
 
-    const getDeletedItem = await request(app).get("/applications/2");
+    const getDeletedItem = await request(app).get(`/applications/${id}`);
 
     expect(getDeletedItem.status).toBe(404);
   });

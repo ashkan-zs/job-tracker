@@ -4,42 +4,79 @@ import {
   createApplicationSchema,
   updateApplicationSchema,
   type Application,
+  type CreateApplication,
+  type UpdateApplication,
 } from "../schemas/application.schema.js";
 import { validateApplicationId } from "../middleware/validate-application-id.middleware.js";
-import { applications } from "../data/applications.store.js";
+import { pool } from "../db/pool.js";
 
 // Helper functions
-const getNextId = (applications: Application[]) => {
-  const maxId = applications.reduce(
-    (max, application) => Math.max(max, application.id),
-    0,
+const getApplications = async (): Promise<Application[]> => {
+  const result = await pool.query<Application>("SELECT * FROM applications");
+  return result.rows;
+};
+
+const getApplicationById = async (id: number): Promise<Application | null> => {
+  const result = await pool.query<Application>(
+    "SELECT * FROM applications WHERE id = $1",
+    [id],
+  );
+  return result.rows[0] ?? null;
+};
+
+const addApplication = async (
+  application: CreateApplication,
+): Promise<Application> => {
+  const result = await pool.query<Application>(
+    `INSERT INTO applications (company, position, status)
+     VALUES($1, $2, $3)
+     RETURNING *`,
+    [application.company, application.position, application.status],
   );
 
-  return maxId + 1;
+  const createdApplication = result.rows[0];
+
+  if (!createdApplication) {
+    throw new Error("Failed to create application");
+  }
+
+  return createdApplication;
 };
 
-const getApplications = () => {
-  return applications;
+const deleteApplicationById = async (id: number) => {
+  const result = await pool.query("DELETE FROM applications WHERE id=$1", [id]);
+
+  return result.rowCount;
 };
 
-const getApplicationById = (id: number) => {
-  return applications.find((application) => application.id === id);
-};
+const updateApplication = async (
+  id: number,
+  data: UpdateApplication,
+): Promise<Application | null> => {
+  const result = await pool.query(
+    `UPDATE applications
+     SET 
+      company=COALESCE($1, company),
+      position=COALESCE($2, position),
+      status=COALESCE($3, status)
+     WHERE id=$4
+     RETURNING *`,
+    [data.company ?? null, data.position ?? null, data.status ?? null, id],
+  );
 
-const getApplicationIndex = (id: number) => {
-  return applications.findIndex((application) => application.id === id);
+  return result.rows[0] ?? null;
 };
 
 const router: Router = Router();
 
-router.get("/", (req, res) => {
-  res.json(getApplications());
+router.get("/", async (req, res) => {
+  res.json(await getApplications());
 });
 
-router.get("/:id", validateApplicationId, (req, res) => {
+router.get("/:id", validateApplicationId, async (req, res) => {
   const applicationId = res.locals.applicationId;
 
-  const application = getApplicationById(applicationId);
+  const application = await getApplicationById(applicationId);
 
   if (!application) {
     return res.status(404).json({ message: "Job application not found!" });
@@ -48,7 +85,7 @@ router.get("/:id", validateApplicationId, (req, res) => {
   res.json(application);
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const requestData = createApplicationSchema.safeParse(req.body);
 
   if (!requestData.success) {
@@ -58,28 +95,24 @@ router.post("/", (req, res) => {
     });
   }
 
-  const application = { ...requestData.data, id: getNextId(applications) };
-
-  applications.push(application);
+  const application = await addApplication(requestData.data);
 
   res.status(201).json(application);
 });
 
-router.delete("/:id", validateApplicationId, (req, res) => {
+router.delete("/:id", validateApplicationId, async (req, res) => {
   const applicationId = res.locals.applicationId;
 
-  const applicationIndex = getApplicationIndex(applicationId);
+  const deletedCount = await deleteApplicationById(applicationId);
 
-  if (applicationIndex === -1) {
+  if (deletedCount === 0) {
     return res.status(404).json({ message: "Job application not found!" });
   }
-
-  applications.splice(applicationIndex, 1);
 
   res.status(204).send();
 });
 
-router.patch("/:id", validateApplicationId, (req, res) => {
+router.patch("/:id", validateApplicationId, async (req, res) => {
   const applicationId = res.locals.applicationId;
   const requestData = updateApplicationSchema.safeParse(req.body);
 
@@ -89,22 +122,21 @@ router.patch("/:id", validateApplicationId, (req, res) => {
       errors: requestData.error.issues,
     });
   }
-  const applicationIndex = getApplicationIndex(applicationId);
 
-  const existingApplication = applications[applicationIndex];
+  const existingApplication = await getApplicationById(applicationId);
 
   if (!existingApplication) {
     return res.status(404).json({ message: "Job application not found!" });
   }
 
-  const updatedApplication: Application = {
-    id: applicationId,
-    company: requestData.data.company ?? existingApplication.company,
-    position: requestData.data.position ?? existingApplication.position,
-    status: requestData.data.status ?? existingApplication.status,
-  };
+  const updatedApplication = await updateApplication(
+    applicationId,
+    requestData.data,
+  );
 
-  applications[applicationIndex] = updatedApplication;
+  if (!updatedApplication) {
+    return res.status(404).json({ message: "Job application not found!" });
+  }
 
   res.json(updatedApplication);
 });

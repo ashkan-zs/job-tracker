@@ -14,7 +14,9 @@ export const updateApplicationSchema = createApplicationSchema
   });
 
 // Types
-type CreateApplication = z.infer<typeof createApplicationSchema>;
+export type CreateApplication = z.infer<typeof createApplicationSchema>;
+
+export type UpdateApplication = z.infer<typeof updateApplicationSchema>;
 
 export type Application = CreateApplication & {
   id: number;
