@@ -12,6 +12,8 @@ import {
   getApplications,
   updateApplication,
 } from "../repositories/applications.repository.js";
+import { AppError } from "../errors/app-error.js";
+import { validateBody } from "../middleware/validate-body.middleware.js";
 
 const router: Router = Router();
 
@@ -25,23 +27,14 @@ router.get("/:id", validateApplicationId, async (req, res) => {
   const application = await getApplicationById(applicationId);
 
   if (!application) {
-    return res.status(404).json({ message: "Job application not found!" });
+    throw new AppError(404, "Job application not found!");
   }
 
   res.json(application);
 });
 
-router.post("/", async (req, res) => {
-  const requestData = createApplicationSchema.safeParse(req.body);
-
-  if (!requestData.success) {
-    return res.status(400).json({
-      message: "Invalid job application data",
-      errors: requestData.error.issues,
-    });
-  }
-
-  const application = await addApplication(requestData.data);
+router.post("/", validateBody(createApplicationSchema), async (req, res) => {
+  const application = await addApplication(req.body);
 
   res.status(201).json(application);
 });
@@ -52,39 +45,33 @@ router.delete("/:id", validateApplicationId, async (req, res) => {
   const deletedCount = await deleteApplicationById(applicationId);
 
   if (deletedCount === 0) {
-    return res.status(404).json({ message: "Job application not found!" });
+    throw new AppError(404, "Job application not found!");
   }
 
   res.status(204).send();
 });
 
-router.patch("/:id", validateApplicationId, async (req, res) => {
-  const applicationId = res.locals.applicationId;
-  const requestData = updateApplicationSchema.safeParse(req.body);
+router.patch(
+  "/:id",
+  validateApplicationId,
+  validateBody(updateApplicationSchema),
+  async (req, res) => {
+    const applicationId = res.locals.applicationId;
 
-  if (!requestData.success) {
-    return res.status(400).json({
-      message: "Invalid job application data",
-      errors: requestData.error.issues,
-    });
-  }
+    const existingApplication = await getApplicationById(applicationId);
 
-  const existingApplication = await getApplicationById(applicationId);
+    if (!existingApplication) {
+      throw new AppError(404, "Job application not found!");
+    }
 
-  if (!existingApplication) {
-    return res.status(404).json({ message: "Job application not found!" });
-  }
+    const updatedApplication = await updateApplication(applicationId, req.body);
 
-  const updatedApplication = await updateApplication(
-    applicationId,
-    requestData.data,
-  );
+    if (!updatedApplication) {
+      throw new AppError(404, "Job application not found!");
+    }
 
-  if (!updatedApplication) {
-    return res.status(404).json({ message: "Job application not found!" });
-  }
-
-  res.json(updatedApplication);
-});
+    res.json(updatedApplication);
+  },
+);
 
 export default router;

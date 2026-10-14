@@ -16,7 +16,13 @@ afterAll(async () => {
 });
 
 describe("GET /applications", () => {
-  test("return an empty array when no applications exist", async () => {
+  test("should return an empty array when no applications exist", async () => {
+    const response = await request(app).get("/applications");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+  test("should return all applications", async () => {
     await seedApplication({
       company: "flex",
       position: "frontend",
@@ -115,8 +121,9 @@ describe("POST /applications", () => {
     const response = await request(app).post("/applications").send(body);
 
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty("message");
-    expect(response.body.errors.length).toBeGreaterThan(0);
+    expect(response.body).toMatchObject({
+      message: "Invalid application data",
+    });
   });
 });
 
@@ -176,14 +183,15 @@ describe("PATCH /applications/:id", () => {
     { name: "is invalid", body: { status: "pending" } },
     { name: "is empty", body: {} },
   ])("should return 400 when body $name", async ({ body }) => {
-    const response = await request(app).patch("/applications/2").send(body);
+    const id = await seedApplication({
+      company: "flex",
+      position: "frontend",
+      status: "applied",
+    });
+    const response = await request(app).patch(`/applications/${id}`).send(body);
 
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty(
-      "message",
-      "Invalid job application data",
-    );
-    expect(response.body.errors.length).toBeGreaterThan(0);
+    expect(response.body).toHaveProperty("message", "Invalid application data");
   });
 
   test("should return 404 when ID does not exist", async () => {
