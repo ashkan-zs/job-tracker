@@ -205,3 +205,5 @@ Backups.backupdb
 .MobileBackups.trash
 MobileBackups.trash
 tmbootpicker.efi
+
+/src/generated/prisma
