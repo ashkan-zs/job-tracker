@@ -58,17 +58,7 @@ router.patch(
   async (req, res) => {
     const applicationId = res.locals.applicationId;
 
-    const existingApplication = await getApplicationById(applicationId);
-
-    if (!existingApplication) {
-      throw new AppError(404, "Job application not found!");
-    }
-
     const updatedApplication = await updateApplication(applicationId, req.body);
-
-    if (!updatedApplication) {
-      throw new AppError(404, "Job application not found!");
-    }
 
     res.json(updatedApplication);
   },
